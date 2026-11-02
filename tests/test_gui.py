@@ -36,6 +36,8 @@ def wait_finished(window):
     while window.job is not None and time.monotonic() < deadline:
         QTest.qWait(10)
     assert window.job is None
+    # Showing the confirmation schedules a layout pass after the worker's signals.
+    QApplication.processEvents()
 
 
 def test_text_command_updates_native_ui_and_history(window):

@@ -35,7 +35,7 @@ from voice_control_pc.models import ResolvedConfig
 from voice_control_pc.service import VoiceControlService
 from voice_control_pc.ui.pet import DesktopPet, LumoFace
 from voice_control_pc.ui.settings import SettingsDialog
-from voice_control_pc.ui.theme import STYLE
+from voice_control_pc.ui.theme import apply_theme
 
 ACTIONS = {
     "open_app": "Открыть приложение",
@@ -90,6 +90,7 @@ class LumoWindow(QMainWindow):
 
     def __init__(self, config: ResolvedConfig):
         super().__init__()
+        apply_theme(QApplication.instance())
         self.config = config
         self.service = None
         self.transcriber = None
@@ -105,7 +106,6 @@ class LumoWindow(QMainWindow):
         self.setWindowTitle("Лумо · голосовой помощник")
         self.resize(1060, 780)
         self.setMinimumSize(900, 720)
-        self.setStyleSheet(STYLE)
         self._build()
         self.pet = DesktopPet(config.settings.pet)
         self.pet.open_requested.connect(self.reveal)
@@ -129,29 +129,31 @@ class LumoWindow(QMainWindow):
         central = QWidget()
         self.setCentralWidget(central)
         outer = QHBoxLayout(central)
-        outer.setContentsMargins(22, 22, 26, 22)
-        outer.setSpacing(27)
+        outer.setContentsMargins(20, 20, 24, 20)
+        outer.setSpacing(24)
         sidebar = QFrame()
         sidebar.setObjectName("sidebar")
-        sidebar.setFixedWidth(224)
+        sidebar.setFixedWidth(214)
         left = QVBoxLayout(sidebar)
-        left.setContentsMargins(22, 30, 22, 25)
+        left.setContentsMargins(20, 26, 20, 22)
         left.setSpacing(15)
         brand = QLabel("LUMO")
         brand.setObjectName("brand")
         left.addWidget(brand)
-        caption = QLabel("ТВОЙ ТИХИЙ ПОМОЩНИК")
+        caption = QLabel("ГОЛОСОВОЙ ПОМОЩНИК")
         caption.setObjectName("eyebrow")
         left.addWidget(caption)
         left.addStretch()
         self.portrait = LumoFace()
-        self.portrait.setFixedSize(180, 180)
+        self.portrait.setFixedSize(170, 148)
         left.addWidget(self.portrait)
-        name = QLabel("Маленький друг.\nБольшая помощь.")
+        name = QLabel("Рядом, когда нужен.")
+        name.setWordWrap(True)
         name.setStyleSheet("font-size:20px; font-weight:500;")
         left.addWidget(name)
         text = QLabel("Скажи, что нужно сделать.\nОстальное — вместе.")
-        text.setStyleSheet("color:#a8b99f;")
+        text.setWordWrap(True)
+        text.setStyleSheet("color:#a4a5ad;")
         left.addWidget(text)
         left.addStretch()
         settings = QPushButton("Настроить Лумо")
@@ -165,14 +167,14 @@ class LumoWindow(QMainWindow):
         self.pet_button.clicked.connect(self.toggle_pet)
         left.addWidget(self.pet_button)
         foot = QLabel("Локально. Под твоим контролем.")
-        foot.setStyleSheet("font-size:10px; color:#a8b99f;")
+        foot.setStyleSheet("font-size:10px; color:#94959e;")
         left.addWidget(foot)
         outer.addWidget(sidebar)
         content = QVBoxLayout()
         content.setSpacing(18)
         outer.addLayout(content, 1)
         head = QHBoxLayout()
-        eyebrow = QLabel("ЛИЧНОЕ ПРОСТРАНСТВО")
+        eyebrow = QLabel("ЛУМО / ГЛАВНАЯ")
         eyebrow.setObjectName("eyebrow")
         head.addWidget(eyebrow)
         head.addStretch()
@@ -180,7 +182,7 @@ class LumoWindow(QMainWindow):
         self.mode.setObjectName("status")
         head.addWidget(self.mode)
         content.addLayout(head)
-        heading = QLabel("Привет. Я рядом.")
+        heading = QLabel("Что сделаем сегодня?")
         heading.setObjectName("heading")
         content.addWidget(heading)
         subtitle = QLabel("Открыть приложение, найти папку или освободить рабочий стол.")

@@ -1,8 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
-<path fill="#14231c" d="M43 76 38 28 83 51M120 50 163 28 158 83"/>
-<circle cx="100" cy="108" r="75" fill="#101b15"/>
-<ellipse cx="72" cy="103" rx="24" ry="34" fill="#e6ebc7"/><ellipse cx="128" cy="103" rx="24" ry="34" fill="#e6ebc7"/>
-<ellipse cx="78" cy="102" rx="14" ry="25" fill="#080e0a"/><ellipse cx="134" cy="102" rx="14" ry="25" fill="#080e0a"/>
-<circle cx="74" cy="92" r="5" fill="white"/><circle cx="130" cy="92" r="5" fill="white"/>
-<path d="M93 143 Q100 150 107 143" fill="none" stroke="#a8b397" stroke-width="3" stroke-linecap="round"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 168">
+<defs><radialGradient id="body" cx="44%" cy="10%" r="90%"><stop stop-color="#343436"/><stop offset=".5" stop-color="#151516"/><stop offset="1" stop-color="#070708"/></radialGradient></defs>
+<path fill="url(#body)" d="M100 9C47 9 10 55 10 104C10 146 28 160 59 160H141C172 160 190 146 190 104C190 55 153 9 100 9Z"/>
+<g fill="#f4eed3"><ellipse cx="60" cy="94" rx="31" ry="37.5"/><ellipse cx="140" cy="94" rx="31" ry="37.5"/></g>
+<g fill="#0c0c0d"><ellipse cx="60" cy="94" rx="21" ry="26.5"/><ellipse cx="140" cy="94" rx="21" ry="26.5"/></g>
 </svg>

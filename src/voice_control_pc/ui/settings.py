@@ -24,6 +24,7 @@ from PySide6.QtWidgets import (
 )
 
 from voice_control_pc.models import AppEntry, FolderEntry, ResolvedConfig, Settings
+from voice_control_pc.ui.pet import SIDES
 
 
 class SettingsDialog(QDialog):
@@ -93,11 +94,22 @@ class SettingsDialog(QDialog):
         self.pet_lock = QCheckBox("Закрепить положение")
         self.pet_lock.setChecked(config.settings.pet.locked)
         pet.addRow(self.pet_lock)
-        self.reset_position = QCheckBox("Вернуть в нижний правый угол")
+        self.pet_edge = QComboBox()
+        for side, label in SIDES.items():
+            self.pet_edge.addItem(label, side)
+        self.pet_edge.setCurrentIndex(self.pet_edge.findData(config.settings.pet.dock_side))
+        pet.addRow("Край экрана", self.pet_edge)
+        self.pet_offset = QSpinBox()
+        self.pet_offset.setRange(0, 100)
+        self.pet_offset.setValue(round(config.settings.pet.dock_offset * 100))
+        self.pet_offset.setSuffix(" %")
+        self.pet_offset.setToolTip("От левого края к правому или от верхнего к нижнему")
+        pet.addRow("Положение вдоль края", self.pet_offset)
+        self.reset_position = QCheckBox("Вернуть в центр верхнего края основного экрана")
         pet.addRow(self.reset_position)
         pet.addRow(
             QLabel(
-                "Перетащи Лумо мышью. Двойной щелчок откроет приложение.\nПравая кнопка мыши — меню питомца."
+                "Перетащи Лумо: он прикрепится к ближайшему краю экрана.\nВ ожидании — только питомец. Наведи мышь, чтобы открыть управление.\nДвойной щелчок — приложение. Правая кнопка — меню."
             )
         )
         tabs.addTab(self._page(pet), "Питомец")
@@ -224,8 +236,13 @@ class SettingsDialog(QDialog):
             s.pet.size = self.pet_size.value()
             s.pet.always_on_top = self.pet_top.isChecked()
             s.pet.locked = self.pet_lock.isChecked()
+            s.pet.dock_side = self.pet_edge.currentData()
+            s.pet.dock_offset = self.pet_offset.value() / 100
             if self.reset_position.isChecked():
                 s.pet.x = s.pet.y = None
+                s.pet.dock_side = "top"
+                s.pet.dock_offset = 0.5
+                s.pet.screen_name = ""
             s.asr.model_name = self.asr_model.currentText().strip()
             if not s.asr.model_name:
                 raise ValueError("Укажите имя модели распознавания")

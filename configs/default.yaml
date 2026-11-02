@@ -52,3 +52,12 @@ logging:
   level: "INFO"
   jsonl_path: "logs/app.jsonl"
   text_log_path: "logs/app.log"
+
+pet:
+  enabled: true
+  size: 128
+  always_on_top: true
+  locked: false
+  dock_side: "top"
+  dock_offset: 0.5
+  screen_name: ""
