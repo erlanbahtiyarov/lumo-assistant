@@ -43,6 +43,12 @@ jobs:
           python-version: '3.12'
       - run: python -m pip install -c requirements-desktop.lock ".[voice,bundle]"
       - run: python -m PyInstaller --noconfirm lumo.spec
+      - name: Smoke test the packaged application
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: |
+          $app = Start-Process -FilePath dist/Lumo/Lumo.exe -ArgumentList '--smoke-test' -Wait -PassThru
+          if ($app.ExitCode -ne 0) { throw "Lumo smoke test failed: $($app.ExitCode)" }
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: Lumo-Windows

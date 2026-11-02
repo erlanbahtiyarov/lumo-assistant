@@ -27,6 +27,7 @@ def build_parser() -> argparse.ArgumentParser:
         prog="lumo", description="Лумо — настольный голосовой помощник"
     )
     parser.add_argument("--project-root", type=Path, default=None)
+    parser.add_argument("--smoke-test", action="store_true", help=argparse.SUPPRESS)
     subparsers = parser.add_subparsers(dest="command_name")
     subparsers.add_parser("devices", help="Микрофоны")
     subparsers.add_parser("doctor", help="Проверить окружение без загрузки моделей")
@@ -45,6 +46,10 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def _run(args) -> int:
+    if args.smoke_test:
+        from voice_control_pc.gui import smoke_gui
+
+        return smoke_gui()
     config = load_config_bundle(args.project_root)
     name = args.command_name or "gui"
     dry_run = getattr(args, "dry_run", None)

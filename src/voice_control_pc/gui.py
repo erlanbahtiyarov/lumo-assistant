@@ -585,3 +585,13 @@ def run_gui(config: ResolvedConfig | None = None, dry_run: bool | None = None) -
     window = LumoWindow(config)
     window.show()
     return app.exec()
+
+
+def smoke_gui() -> int:
+    """Check the packaged window, resources and event loop without accessing hardware."""
+    with tempfile.TemporaryDirectory(prefix="lumo-smoke-") as directory:
+        app = QApplication.instance() or QApplication(sys.argv[:1])
+        window = LumoWindow(load_config_bundle(Path(directory)))
+        window.show()
+        QTimer.singleShot(200, window.close)
+        return app.exec()
