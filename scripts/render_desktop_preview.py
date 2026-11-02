@@ -8,7 +8,8 @@ from pathlib import Path
 
 os.environ["QT_QPA_PLATFORM"] = "offscreen"
 
-from PySide6.QtGui import QIcon
+from PySide6.QtCore import QRect, Qt
+from PySide6.QtGui import QIcon, QImage, QPainter
 from PySide6.QtWidgets import QApplication, QTabWidget
 
 from voice_control_pc.config import load_config_bundle
@@ -40,7 +41,12 @@ def main():
         from importlib.resources import files
 
         icon = QIcon(str(files("voice_control_pc.resources").joinpath("lumo.svg")))
-        icon.pixmap(256, 256).save(str(output / "lumo-icon.png"))
+        canvas = QImage(256, 256, QImage.Format.Format_ARGB32)
+        canvas.fill(Qt.GlobalColor.transparent)
+        painter = QPainter(canvas)
+        icon.paint(painter, QRect(0, 0, 256, 256))
+        painter.end()
+        canvas.save(str(output / "lumo-icon.png"))
         dialog.close()
         window.close()
     print(f"Native widget previews saved to {output}")
