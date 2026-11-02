@@ -154,3 +154,73 @@ def test_pet_only_mode_can_restore_the_main_window(window):
     assert window.pet.isVisible()
     window.reveal()
     assert window.isVisible()
+
+
+def test_readiness_runs_in_background_without_executing_commands(window, monkeypatch):
+    from unittest.mock import Mock
+
+    from voice_control_pc.diagnostics import Check
+
+    checks = [Check("voice", "Голос", "warning", "Не установлен")]
+    collector = Mock(return_value=checks)
+    show = Mock()
+    monkeypatch.setattr("voice_control_pc.gui.check_readiness", collector)
+    monkeypatch.setattr(window, "_show_readiness", show)
+    QTest.mouseClick(window.check_button, Qt.MouseButton.LeftButton)
+    wait_finished(window)
+    assert window.readiness_checks == checks
+    assert window.service is None
+    assert window.check_button.isEnabled()
+    assert window.history.count() == 0
+    assert collector.call_args.kwargs == {"microphone": True, "ollama": True}
+
+
+def test_browser_manual_choice_and_return_to_windows_default(window, monkeypatch):
+    dialog = SettingsDialog(window.config, [], window)
+    row = next(
+        i for i in range(dialog.apps.rowCount()) if dialog.apps.item(i, 0).text() == "браузер"
+    )
+    dialog.default_browser.setChecked(False)
+    dialog.apps.item(row, 2).setText("D:/My Browser/browser.exe")
+    dialog.accept()
+    browser = dialog.config.apps.applications["браузер"]
+    assert browser.launch == ["D:/My Browser/browser.exe"]
+    assert not browser.auto_detect
+    again = SettingsDialog(dialog.config, [], window)
+    monkeypatch.setattr(
+        "voice_control_pc.ui.settings.find_application", lambda name: "C:/Default/browser.exe"
+    )
+    again.default_browser.setChecked(True)
+    again.accept()
+    restored = again.config.apps.applications["браузер"]
+    assert restored.auto_detect
+    assert restored.launch == ["C:/Default/browser.exe"]
+
+
+def test_discovery_updates_only_selected_settings_row_and_can_be_cancelled(window, monkeypatch):
+    from PySide6.QtWidgets import QPushButton
+
+    dialog = SettingsDialog(window.config, [], window)
+    original = window.config.apps.model_copy(deep=True)
+    row = next(
+        i for i in range(dialog.apps.rowCount()) if dialog.apps.item(i, 0).text() == "telegram"
+    )
+    dialog.apps.setCurrentCell(row, 2)
+    monkeypatch.setattr(
+        "voice_control_pc.ui.settings.find_application", lambda *args: "D:/Telegram/Telegram.exe"
+    )
+    button = next(
+        b
+        for b in dialog.apps.parentWidget().findChildren(QPushButton)
+        if b.text() == "Найти в Windows"
+    )
+    button.setEnabled(True)
+    QTest.mouseClick(button, Qt.MouseButton.LeftButton)
+    assert dialog.apps.item(row, 2).text() == "D:/Telegram/Telegram.exe"
+    for i in range(dialog.apps.rowCount()):
+        if i != row:
+            name = dialog.apps.item(i, 0).text()
+            launch = original.applications[name].launch
+            assert dialog.apps.item(i, 2).text() == (launch[0] if launch else "")
+    dialog.reject()
+    assert window.config.apps == original

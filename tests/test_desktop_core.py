@@ -70,6 +70,7 @@ def test_user_preferences_survive_reload_and_keep_packaged_defaults(tmp_path, mo
     config.settings.pet.x, config.settings.pet.y = 42, 180
     config.settings.audio.max_seconds = 6
     config.apps.applications["браузер"].launch = ["my-browser.exe"]
+    config.apps.applications["браузер"].auto_detect = False
     save_preferences(config)
     restored = load_config_bundle()
     assert restored.settings.pet.x == 42

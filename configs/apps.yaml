@@ -1,8 +1,8 @@
 applications:
   браузер:
-    aliases: ["браузер", "chrome", "google chrome"]
-    launch:
-      - "C:/Program Files/Google/Chrome/Application/chrome.exe"
+    aliases: ["браузер", "интернет", "browser"]
+    launch: []
+    auto_detect: true
   блокнот:
     aliases: ["блокнот", "notepad"]
     launch:
@@ -33,6 +33,9 @@ folders:
   изображения:
     aliases: ["изображения", "картинки", "pictures"]
     path: "~/Pictures"
+  видео:
+    aliases: ["видео", "видеозаписи", "папка видео", "videos"]
+    path: "~/Videos"
 
 system_commands:
   task_manager:

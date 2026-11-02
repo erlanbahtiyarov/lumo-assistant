@@ -30,7 +30,15 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--smoke-test", action="store_true", help=argparse.SUPPRESS)
     subparsers = parser.add_subparsers(dest="command_name")
     subparsers.add_parser("devices", help="Микрофоны")
-    subparsers.add_parser("doctor", help="Проверить окружение без загрузки моделей")
+    doctor = subparsers.add_parser("doctor", help="Проверить окружение без загрузки моделей")
+    doctor.add_argument(
+        "--microphone", action="store_true", help="Проверить список микрофонов без записи"
+    )
+    doctor.add_argument(
+        "--ollama",
+        action="store_true",
+        help="Проверить локальный Ollama и наличие выбранной модели",
+    )
     transcribe = subparsers.add_parser("transcribe")
     transcribe.add_argument("audio_path", type=Path)
     command = subparsers.add_parser("command")
@@ -58,6 +66,8 @@ def _run(args) -> int:
 
         return run_gui(config, dry_run=dry_run)
     if name == "doctor":
+        from voice_control_pc.diagnostics import check_readiness
+
         payload = {
             "python": sys.version.split()[0],
             "platform": sys.platform,
@@ -70,6 +80,10 @@ def _run(args) -> int:
                 key: importlib.util.find_spec(key) is not None
                 for key in ("PySide6", "pyaudio", "faster_whisper", "torch")
             },
+            "checks": [
+                check.as_dict()
+                for check in check_readiness(config, microphone=args.microphone, ollama=args.ollama)
+            ],
         }
         print(json.dumps(payload, ensure_ascii=False, indent=2))
         return 0
