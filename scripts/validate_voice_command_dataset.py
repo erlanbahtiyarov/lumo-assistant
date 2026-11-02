@@ -1,78 +1,96 @@
-"""Validate a voice command dataset used for recovery/intention training."""
+"""Validate labels, audio existence, splits and duplicate recordings before training."""
 
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
+from collections import Counter, defaultdict
 from pathlib import Path
 
+import yaml
 
-def build_parser() -> argparse.ArgumentParser:
+ROOT = Path(__file__).resolve().parents[1]
+
+
+def validate(rows, root: Path, allow_draft=False):
+    errors, warnings = [], []
+    seen_ids, hashes = set(), {}
+    counts = defaultdict(Counter)
+    known = {
+        row["intent"]
+        for row in yaml.safe_load((ROOT / "configs/commands.yaml").read_text("utf-8"))["intents"]
+    } | {"unknown_command"}
+    for index, row in enumerate(rows, 1):
+        fields = (
+            ["audio_path"]
+            if allow_draft
+            else ["audio_path", "text", "intent", "canonical_text", "split"]
+        )
+        for field in fields:
+            if not isinstance(row.get(field), str) or not row[field].strip():
+                errors.append(f"line {index}: missing/invalid {field}")
+        identity = row.get("id")
+        if identity:
+            if identity in seen_ids:
+                errors.append(f"line {index}: duplicate id {identity}")
+            seen_ids.add(identity)
+        split, intent = row.get("split", ""), row.get("intent", "")
+        if not allow_draft:
+            if split not in {"train", "val", "test"}:
+                errors.append(f"line {index}: invalid split {split}")
+            if intent not in known:
+                errors.append(f"line {index}: unknown intent {intent}")
+            counts[intent][split] += 1
+        path = Path(str(row.get("audio_path", "")))
+        path = path if path.is_absolute() else root / path
+        if not path.is_file():
+            errors.append(f"line {index}: audio not found: {path}")
+        else:
+            digest = hashlib.sha256(path.read_bytes()).hexdigest()
+            if digest in hashes:
+                errors.append(f"line {index}: duplicate audio of line {hashes[digest]}")
+            hashes[digest] = index
+    for intent, splits in sorted(counts.items()):
+        if not splits["train"]:
+            errors.append(f"{intent}: no training examples")
+        for split in ("val", "test"):
+            if not splits[split]:
+                warnings.append(f"{intent}: not represented in {split}")
+    return errors, warnings, dict(counts)
+
+
+def main():
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--dataset",
-        type=Path,
-        default=Path("data") / "dataset_curated" / "recovery_dataset_86.jsonl",
+        "--dataset", type=Path, default=ROOT / "data/dataset_curated/recovery_dataset_86.jsonl"
     )
-    parser.add_argument(
-        "--expected-count",
-        type=int,
-        default=None,
-        help="Optional hard check for dataset row count, e.g. 86",
-    )
-    parser.add_argument(
-        "--allow-draft",
-        action="store_true",
-        help="Allow incomplete intent/canonical_text fields for draft datasets",
-    )
-    return parser
-
-
-def main() -> int:
-    parser = build_parser()
+    parser.add_argument("--project-root", type=Path, default=ROOT)
+    parser.add_argument("--expected-count", type=int)
+    parser.add_argument("--allow-draft", action="store_true")
     args = parser.parse_args()
-
-    rows = []
-    with args.dataset.open("r", encoding="utf-8-sig") as fh:
-        for line_number, line in enumerate(fh, start=1):
-            line = line.strip()
-            if not line:
-                continue
-            payload = json.loads(line)
-            payload["_line"] = line_number
-            rows.append(payload)
-
+    rows = [
+        json.loads(line)
+        for line in args.dataset.read_text("utf-8-sig").splitlines()
+        if line.strip()
+    ]
+    errors, warnings, counts = validate(rows, args.project_root, args.allow_draft)
     if args.expected_count is not None and len(rows) != args.expected_count:
-        raise SystemExit(
-            f"Dataset must contain exactly {args.expected_count} rows, found {len(rows)}"
-        )
-
-    missing_fields: list[str] = []
-    for row in rows:
-        required_fields = ("audio_path",)
-        if not args.allow_draft:
-            required_fields += ("text", "intent", "canonical_text")
-        for field in required_fields:
-            if field not in row or not str(row[field]).strip():
-                missing_fields.append(f"line {row['_line']}: missing {field}")
-
-    if missing_fields:
-        preview = "\n".join(missing_fields[:10])
-        raise SystemExit(f"Dataset validation failed:\n{preview}")
-
+        errors.append(f"Expected {args.expected_count} rows, found {len(rows)}")
     print(
         json.dumps(
             {
                 "rows": len(rows),
-                "status": "ok",
-                "draft_mode": args.allow_draft,
-                "dataset": str(args.dataset.resolve()),
+                "status": "error" if errors else "ok",
+                "errors": errors,
+                "warnings": warnings,
+                "counts": counts,
             },
             ensure_ascii=False,
             indent=2,
         )
     )
-    return 0
+    return 1 if errors else 0
 
 
 if __name__ == "__main__":

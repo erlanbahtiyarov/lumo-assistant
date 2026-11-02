@@ -45,7 +45,7 @@ class HashedTextVectorizer:
         min_n, max_n = self.char_ngram_range
         for size in range(min_n, max_n + 1):
             for index in range(len(padded) - size + 1):
-                yield f"char:{padded[index:index + size]}"
+                yield f"char:{padded[index : index + size]}"
 
     def transform_one(self, text: str):
         torch, _nn = _require_torch()
@@ -241,13 +241,16 @@ def train_command_recovery_model(
     val_rows = [row for row in filtered_rows if str(row.get("split", "")).strip() == "val"]
     test_rows = [row for row in filtered_rows if str(row.get("split", "")).strip() == "test"]
     if not train_rows:
-        train_rows = filtered_rows
+        raise ValueError("Dataset must contain an explicit train split")
 
     intent_labels = sorted({str(row["intent"]) for row in filtered_rows})
+    missing_train = set(intent_labels) - {str(row["intent"]) for row in train_rows}
+    if missing_train:
+        raise ValueError(f"No training examples for: {sorted(missing_train)}")
     intent_to_index = {label: index for index, label in enumerate(intent_labels)}
 
     canonical_texts_by_intent: dict[str, list[str]] = {}
-    for row in filtered_rows:
+    for row in train_rows:
         intent = str(row["intent"])
         canonical_text = str(row.get("canonical_text") or row.get("text"))
         canonical_texts_by_intent.setdefault(intent, [])
@@ -314,6 +317,9 @@ def train_command_recovery_model(
         }
 
     history: list[dict[str, Any]] = []
+    best_val_loss = float("inf")
+    best_state = None
+    best_epoch = 0
     for epoch in range(1, epochs + 1):
         model.train()
         total_loss = 0.0
@@ -345,7 +351,15 @@ def train_command_recovery_model(
             history[-1]["val_loss"] = round(float(val_metrics["loss"]), 4)
             history[-1]["val_accuracy"] = round(float(val_metrics["accuracy"]), 4)
             history[-1]["val_macro_f1"] = round(float(val_metrics["macro_f1"]), 4)
+            if float(val_metrics["loss"]) < best_val_loss:
+                best_val_loss = float(val_metrics["loss"])
+                best_epoch = epoch
+                best_state = {
+                    name: value.detach().clone() for name, value in model.state_dict().items()
+                }
 
+    if best_state is not None:
+        model.load_state_dict(best_state)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     torch.save(
         {
@@ -371,6 +385,7 @@ def train_command_recovery_model(
         "intent_labels": intent_labels,
         "model_parameters": model_parameters,
         "epochs": epochs,
+        "best_epoch": best_epoch or epochs,
         "batch_size": batch_size,
         "learning_rate": learning_rate,
         "seed": seed,

@@ -1,45 +1,40 @@
-"""Logging helpers."""
+"""Bounded UTF-8 logs with timestamps and clean handler lifecycle."""
 
 from __future__ import annotations
 
 import json
 import logging
+from datetime import datetime
+from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
 
+class JsonFormatter(logging.Formatter):
+    def format(self, record):
+        return json.dumps(
+            {
+                "time": datetime.fromtimestamp(record.created).astimezone().isoformat(),
+                "level": record.levelname,
+                "logger": record.name,
+                "message": record.getMessage(),
+            },
+            ensure_ascii=False,
+        )
+
+
 def setup_logging(level: str, text_log_path: Path, jsonl_log_path: Path) -> logging.Logger:
-    logger = logging.getLogger("voice_control_pc")
+    logger = logging.getLogger("lumo")
     logger.setLevel(getattr(logging, level.upper(), logging.INFO))
-    logger.handlers.clear()
-
-    text_log_path.parent.mkdir(parents=True, exist_ok=True)
-    jsonl_log_path.parent.mkdir(parents=True, exist_ok=True)
-
-    text_handler = logging.FileHandler(text_log_path, encoding="utf-8")
-    text_handler.setFormatter(
-        logging.Formatter("%(asctime)s | %(levelname)s | %(name)s | %(message)s")
-    )
-    logger.addHandler(text_handler)
-
-    console_handler = logging.StreamHandler()
-    console_handler.setFormatter(logging.Formatter("%(levelname)s | %(message)s"))
-    logger.addHandler(console_handler)
-
-    jsonl_handler = JsonlHandler(jsonl_log_path)
-    logger.addHandler(jsonl_handler)
+    for handler in logger.handlers[:]:
+        logger.removeHandler(handler)
+        handler.close()
+    logger.propagate = False
+    for path, formatter in (
+        (text_log_path, logging.Formatter("%(asctime)s | %(levelname)s | %(message)s")),
+        (jsonl_log_path, JsonFormatter()),
+    ):
+        path.parent.mkdir(parents=True, exist_ok=True)
+        handler = RotatingFileHandler(path, maxBytes=2_000_000, backupCount=2, encoding="utf-8")
+        handler.setFormatter(formatter)
+        logger.addHandler(handler)
     return logger
-
-
-class JsonlHandler(logging.Handler):
-    def __init__(self, path: Path):
-        super().__init__()
-        self.path = path
-
-    def emit(self, record: logging.LogRecord) -> None:
-        payload = {
-            "level": record.levelname,
-            "logger": record.name,
-            "message": record.getMessage(),
-        }
-        with self.path.open("a", encoding="utf-8") as fh:
-            fh.write(json.dumps(payload, ensure_ascii=False) + "\n")

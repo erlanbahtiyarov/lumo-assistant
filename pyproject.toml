@@ -4,38 +4,46 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "lumo-assistant"
-version = "0.1.0"
-description = "Local Windows voice control MVP with Faster-Whisper and rule-based NLU"
+version = "0.2.0"
+description = "Lumo: native desktop voice assistant and animated companion"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
   "PyYAML>=6.0",
-  "faster-whisper>=1.2.0",
   "pydantic>=2.8.0",
-  "pyautogui>=0.9.54",
-  "keyboard>=0.13.5",
-  "pynput>=1.7.7",
-  "PyAudio>=0.2.14",
+  "PySide6-Essentials>=6.8,<7",
 ]
 
 [project.optional-dependencies]
+voice = [
+  "faster-whisper>=1.2.0,<2",
+  "av>=14,<17",
+  "pyautogui>=0.9.54",
+  "keyboard>=0.13.5; sys_platform == 'win32'",
+  "PyAudio>=0.2.14",
+  "Pillow>=10,<13",
+]
 dev = [
   "pytest>=8.2.0",
   "ruff>=0.5.0",
   "mypy>=1.10.0",
 ]
 ml = [
-  "av>=14.0.0",
+  "av>=14,<17",
   "matplotlib>=3.9.0",
   "numpy>=2.0.0",
   "torch>=2.3.0",
   "torchaudio>=2.3.0",
   "Pillow>=10.0.0",
 ]
+bundle = ["pyinstaller>=6.10,<7"]
 
 [project.scripts]
 lumo = "voice_control_pc.cli:main"
 voice-pc = "voice_control_pc.cli:main"
+
+[project.gui-scripts]
+lumo-desktop = "voice_control_pc.cli:main"
 
 [tool.setuptools]
 package-dir = {"" = "src"}
@@ -43,11 +51,17 @@ package-dir = {"" = "src"}
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[tool.setuptools.package-data]
+"voice_control_pc.resources" = ["*.yaml", "*.svg"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 
 [tool.ruff]
 line-length = 100
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I"]
 
 [tool.mypy]
 python_version = "3.12"

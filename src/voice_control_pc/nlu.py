@@ -35,8 +35,18 @@ def is_actionable_text(text: str) -> bool:
     words = normalize_text(text).split()
     blocked = {"не", "нет", "нельзя", "отмена", "отмени", "потом", "затем", "и", "или"}
     verbs = {
-        "открой", "запусти", "покажи", "сделай", "сохрани", "закрой", "сверни",
-        "заблокируй", "выключи", "заверши", "перезагрузи", "перезапусти",
+        "открой",
+        "запусти",
+        "покажи",
+        "сделай",
+        "сохрани",
+        "закрой",
+        "сверни",
+        "заблокируй",
+        "выключи",
+        "заверши",
+        "перезагрузи",
+        "перезапусти",
     }
     return (
         len(words) >= 2
@@ -65,23 +75,41 @@ class RuleBasedNLU:
         best_example: str | None = None
         best_score = 0.0
 
-        # Recognize an opening verb independently of the allowlisted object.
+        # Resolve objects independently of the opening verb; reject alias collisions.
         opening = re.fullmatch(r"(?:открой|запусти|покажи) (.+)", normalized_text)
         if opening:
             target = opening.group(1)
             folder_target = re.sub(r"^папк[ауи] ", "", target)
+            candidates = []
             for intent, aliases, slot in (
                 ("open_app", self._iter_app_aliases(), "app_name"),
                 ("open_folder", self._iter_folder_aliases(), "folder_name"),
             ):
+                if intent == "open_app" and folder_target != target:
+                    continue
                 names = {name for alias, name in aliases if alias in {target, folder_target}}
                 spec = next((item for item in self.commands.intents if item.intent == intent), None)
-                if len(names) == 1 and spec is not None:
-                    return IntentMatch(
-                        text=text, normalized_text=normalized_text, intent=spec.intent,
-                        action=spec.action, confidence=1.0, slots={slot: names.pop()},
-                        dangerous=spec.dangerous,
-                    )
+                if spec is not None:
+                    candidates.extend((spec, {slot: name}) for name in sorted(names))
+            for spec in self.commands.intents:
+                if spec.intent not in {"open_task_manager", "open_settings", "open_terminal"}:
+                    continue
+                targets = {normalize_text(example).split(" ", 1)[-1] for example in spec.examples}
+                if target in targets:
+                    candidates.append((spec, {}))
+            if len(candidates) > 1:
+                return rejected
+            if candidates:
+                spec, slots = candidates[0]
+                return IntentMatch(
+                    text=text,
+                    normalized_text=normalized_text,
+                    intent=spec.intent,
+                    action=spec.action,
+                    confidence=1.0,
+                    slots=slots,
+                    dangerous=spec.dangerous,
+                )
 
         for spec in self.commands.intents:
             for example in spec.examples:

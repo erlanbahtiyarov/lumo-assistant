@@ -149,7 +149,9 @@ class AudioIntentCNN(nn.Module):
         return self.classifier(self.features(features))
 
 
-def confusion_matrix(targets: list[int], predictions: list[int], class_count: int) -> list[list[int]]:
+def confusion_matrix(
+    targets: list[int], predictions: list[int], class_count: int
+) -> list[list[int]]:
     matrix = [[0 for _ in range(class_count)] for _ in range(class_count)]
     for target, prediction in zip(targets, predictions):
         matrix[target][prediction] += 1
@@ -215,7 +217,9 @@ def plot_history(history: list[dict[str, Any]], output_dir: Path) -> None:
     for metric, title in [("loss", "Loss"), ("accuracy", "Accuracy")]:
         plt.figure(figsize=(10, 6))
         plt.plot(epochs, [item[f"train_{metric}"] for item in history], label="Train", linewidth=2)
-        plt.plot(epochs, [item[f"val_{metric}"] for item in history], label="Validation", linewidth=2)
+        plt.plot(
+            epochs, [item[f"val_{metric}"] for item in history], label="Validation", linewidth=2
+        )
         plt.title(f"Audio CNN {title}")
         plt.xlabel("Epoch")
         plt.ylabel(title)
@@ -243,7 +247,9 @@ def plot_confusion(matrix: list[list[int]], labels: list[str], output_path: Path
     plt.close()
 
 
-def plot_distribution(rows: list[dict[str, Any]], split: dict[str, list[int]], output_path: Path) -> None:
+def plot_distribution(
+    rows: list[dict[str, Any]], split: dict[str, list[int]], output_path: Path
+) -> None:
     labels = sorted({str(row["intent"]) for row in rows})
     split_counts = {
         split_name: Counter(str(rows[index]["intent"]) for index in indexes)
@@ -272,15 +278,25 @@ def main() -> int:
     start_time = time.perf_counter()
 
     rows = load_rows(args.dataset)
-    if len(rows) != 86:
-        raise SystemExit(f"Expected exactly 86 rows, found {len(rows)}")
-    missing = [row["audio_path"] for row in rows if not resolve_audio_path(row["audio_path"]).exists()]
+    if not rows:
+        raise SystemExit("Dataset is empty")
+    missing = [
+        row["audio_path"] for row in rows if not resolve_audio_path(row["audio_path"]).exists()
+    ]
     if missing:
         raise SystemExit(f"Missing audio files: {len(missing)}")
 
     labels = sorted({str(row["intent"]) for row in rows})
     label_to_index = {label: index for index, label in enumerate(labels)}
-    split = create_stratified_split(rows, args.seed)
+    split = {
+        name: [i for i, row in enumerate(rows) if row.get("split") == name]
+        for name in ("train", "val", "test")
+    }
+    if any(not indexes for indexes in split.values()) or sum(map(len, split.values())) != len(rows):
+        raise SystemExit("Dataset must have explicit non-empty train, val and test splits")
+    missing_train = set(labels) - {str(rows[i]["intent"]) for i in split["train"]}
+    if missing_train:
+        raise SystemExit(f"No training examples for: {sorted(missing_train)}")
 
     max_samples = int(args.sample_rate * args.max_seconds)
     mel_transform = torchaudio.transforms.MelSpectrogram(
@@ -294,7 +310,9 @@ def main() -> int:
     waveforms: list[torch.Tensor] = []
     durations: list[float] = []
     for row in rows:
-        waveform = decode_audio(resolve_audio_path(row["audio_path"]), args.sample_rate, max_samples)
+        waveform = decode_audio(
+            resolve_audio_path(row["audio_path"]), args.sample_rate, max_samples
+        )
         nonzero = int((waveform.abs() > 1e-5).sum().item())
         durations.append(nonzero / args.sample_rate)
         waveforms.append(waveform)
@@ -331,12 +349,17 @@ def main() -> int:
     model = AudioIntentCNN(len(labels))
     train_class_counts = Counter(train_targets)
     class_weights = torch.tensor(
-        [len(train_targets) / max(len(labels) * train_class_counts[index], 1) for index in range(len(labels))],
+        [
+            len(train_targets) / max(len(labels) * train_class_counts[index], 1)
+            for index in range(len(labels))
+        ],
         dtype=torch.float32,
     )
     criterion = nn.CrossEntropyLoss(weight=class_weights)
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.learning_rate, weight_decay=1e-4)
-    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode="max", patience=6, factor=0.5)
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+        optimizer, mode="max", patience=6, factor=0.5
+    )
     train_dataset = torch.utils.data.TensorDataset(train_x, train_y)
     generator = torch.Generator().manual_seed(args.seed)
     train_loader = torch.utils.data.DataLoader(
@@ -382,7 +405,9 @@ def main() -> int:
         if val_result["accuracy"] > best_val_accuracy:
             best_val_accuracy = val_result["accuracy"]
             best_epoch = epoch
-            best_state = {name: value.detach().clone() for name, value in model.state_dict().items()}
+            best_state = {
+                name: value.detach().clone() for name, value in model.state_dict().items()
+            }
             no_improvement = 0
         else:
             no_improvement += 1

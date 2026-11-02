@@ -1,0 +1,43 @@
+applications:
+  браузер:
+    aliases: ["браузер", "chrome", "google chrome"]
+    launch:
+      - "C:/Program Files/Google/Chrome/Application/chrome.exe"
+  блокнот:
+    aliases: ["блокнот", "notepad"]
+    launch:
+      - "notepad.exe"
+  калькулятор:
+    aliases: ["калькулятор", "calc"]
+    launch:
+      - "calc.exe"
+  проводник:
+    aliases: ["проводник", "explorer"]
+    launch:
+      - "explorer.exe"
+  telegram:
+    aliases: ["telegram", "телеграм"]
+    launch:
+      - "telegram.exe"
+
+folders:
+  загрузки:
+    aliases: ["загрузки", "папка загрузки", "downloads"]
+    path: "~/Downloads"
+  документы:
+    aliases: ["документы", "папка документы", "documents"]
+    path: "~/Documents"
+  рабочий_стол:
+    aliases: ["рабочий стол", "desktop"]
+    path: "~/Desktop"
+  изображения:
+    aliases: ["изображения", "картинки", "pictures"]
+    path: "~/Pictures"
+
+system_commands:
+  task_manager:
+    launch: ["taskmgr.exe"]
+  settings:
+    launch: ["cmd.exe", "/c", "start", "ms-settings:"]
+  terminal:
+    launch: ["powershell.exe"]

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import subprocess
+import sys
 from datetime import datetime
 from pathlib import Path
 
@@ -15,7 +16,9 @@ class ConfirmationRequiredError(RuntimeError):
 
 
 class SafeCommandExecutor:
-    def __init__(self, apps: AppsCatalog, settings: ExecutionSettings, project_root: Path, dry_run: bool):
+    def __init__(
+        self, apps: AppsCatalog, settings: ExecutionSettings, project_root: Path, dry_run: bool
+    ):
         self.apps = apps
         self.settings = settings
         self.project_root = project_root
@@ -29,7 +32,11 @@ class SafeCommandExecutor:
                 message="Команда не распознана",
             )
 
-        if match.action in self.settings.require_confirmation_for and not confirmed:
+        if (
+            match.dangerous
+            or match.action
+            in {"shutdown_pc", "restart_pc", *self.settings.require_confirmation_for}
+        ) and not confirmed:
             return CommandResult(
                 success=False,
                 status="confirmation_required",
@@ -48,7 +55,24 @@ class SafeCommandExecutor:
                 intent=match.intent,
                 action=match.action,
             )
-        return handler(match)
+        if not self.dry_run and sys.platform != "win32":
+            return CommandResult(
+                success=False,
+                status="unsupported_platform",
+                message="Реальное выполнение пока поддерживается только в Windows",
+                intent=match.intent,
+                action=match.action,
+            )
+        try:
+            return handler(match)
+        except Exception as error:
+            return CommandResult(
+                success=False,
+                status="execution_error",
+                message=str(error),
+                intent=match.intent,
+                action=match.action,
+            )
 
     def _handle_open_app(self, match: IntentMatch) -> CommandResult:
         app_name = match.slots.get("app_name")
@@ -82,6 +106,8 @@ class SafeCommandExecutor:
                 intent=match.intent,
                 action=match.action,
             )
+        if not folder_path.is_dir():
+            raise FileNotFoundError(f"Папка не найдена: {folder_path}")
         os.startfile(folder_path)
         return CommandResult(
             success=True,
@@ -93,8 +119,7 @@ class SafeCommandExecutor:
 
     def _handle_take_screenshot(self, match: IntentMatch) -> CommandResult:
         screenshot_dir = self.project_root / self.settings.screenshot_dir
-        screenshot_dir.mkdir(parents=True, exist_ok=True)
-        screenshot_path = screenshot_dir / f"screenshot_{datetime.now():%Y%m%d_%H%M%S}.png"
+        screenshot_path = screenshot_dir / f"screenshot_{datetime.now():%Y%m%d_%H%M%S_%f}.png"
         if self.dry_run:
             return CommandResult(
                 success=True,
@@ -107,6 +132,7 @@ class SafeCommandExecutor:
 
         import pyautogui
 
+        screenshot_dir.mkdir(parents=True, exist_ok=True)
         screenshot = pyautogui.screenshot()
         screenshot.save(screenshot_path)
         return CommandResult(
@@ -119,6 +145,21 @@ class SafeCommandExecutor:
         )
 
     def _handle_close_window(self, match: IntentMatch) -> CommandResult:
+        if not self.dry_run:
+            import ctypes
+            from ctypes import wintypes
+
+            user32 = ctypes.windll.user32
+            user32.GetForegroundWindow.restype = wintypes.HWND
+            user32.GetWindowThreadProcessId.argtypes = [
+                wintypes.HWND,
+                ctypes.POINTER(wintypes.DWORD),
+            ]
+            pid = wintypes.DWORD()
+            foreground = user32.GetForegroundWindow()
+            user32.GetWindowThreadProcessId(foreground, ctypes.byref(pid))
+            if pid.value == os.getpid():
+                raise RuntimeError("Переключись в нужное окно и вызови команду горячей клавишей")
         return self._run_pyautogui_hotkey(("alt", "f4"), "Активное окно закрыто", match)
 
     def _handle_show_desktop(self, match: IntentMatch) -> CommandResult:
@@ -159,6 +200,8 @@ class SafeCommandExecutor:
         return self._run_process(["shutdown", "/r", "/t", "0"], "Компьютер перезагружается", match)
 
     def _run_process(self, command: list[str], message: str, match: IntentMatch) -> CommandResult:
+        if not command or not command[0].strip():
+            raise ValueError("Укажите путь к приложению в настройках")
         if self.dry_run:
             return CommandResult(
                 success=True,
@@ -167,7 +210,7 @@ class SafeCommandExecutor:
                 intent=match.intent,
                 action=match.action,
             )
-        subprocess.Popen(command)
+        subprocess.Popen(command, shell=False)
         return CommandResult(
             success=True,
             status="success",

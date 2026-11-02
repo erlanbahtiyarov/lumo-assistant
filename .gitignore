@@ -22,3 +22,5 @@ data/dataset_curated/*.backup*.jsonl
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
+build/
+dist/
