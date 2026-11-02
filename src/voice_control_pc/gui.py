@@ -158,7 +158,7 @@ class LumoWindow(QMainWindow):
         settings.clicked.connect(self.open_settings)
         self.settings_button = settings
         left.addWidget(settings)
-        pet_only = QPushButton("Оставить только питомца")
+        pet_only = QPushButton("Только питомец")
         pet_only.clicked.connect(self.minimize_to_pet)
         left.addWidget(pet_only)
         self.pet_button = QPushButton("Скрыть питомца")
