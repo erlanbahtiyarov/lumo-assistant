@@ -23,6 +23,7 @@ from PySide6.QtWidgets import (
     QMainWindow,
     QMessageBox,
     QPushButton,
+    QScrollArea,
     QVBoxLayout,
     QWidget,
 )
@@ -170,9 +171,16 @@ class LumoWindow(QMainWindow):
         foot.setStyleSheet("font-size:10px; color:#94959e;")
         left.addWidget(foot)
         outer.addWidget(sidebar)
-        content = QVBoxLayout()
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        page = QWidget()
+        content = QVBoxLayout(page)
+        content.setContentsMargins(0, 0, 0, 0)
         content.setSpacing(18)
-        outer.addLayout(content, 1)
+        scroll.setWidget(page)
+        outer.addWidget(scroll, 1)
         head = QHBoxLayout()
         eyebrow = QLabel("ЛУМО / ГЛАВНАЯ")
         eyebrow.setObjectName("eyebrow")

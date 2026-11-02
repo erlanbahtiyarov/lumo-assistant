@@ -27,7 +27,7 @@ QSpinBox::up-arrow { image: url('@CHEVRON_UP@'); width: 10px; height: 6px; }
 QSpinBox::down-arrow, QComboBox::down-arrow { image: url('@CHEVRON_DOWN@'); width: 10px; height: 6px; }
 QComboBox::drop-down { width: 28px; border: 0; background: #303136; border-top-right-radius: 7px; border-bottom-right-radius: 7px; }
 QComboBox QAbstractItemView { background: #222327; color: #eeeae1; selection-background-color: #45433c; }
-QPushButton { background: #292a2e; border: 1px solid #3b3c42; border-radius: 8px; padding: 11px 16px; font-weight: 500; }
+QPushButton { background: #292a2e; border: 1px solid #3b3c42; border-radius: 8px; padding: 11px 16px; font-weight: 500; min-height: 16px; }
 QPushButton:hover { background: #37383e; border-color: #65666e; }
 QPushButton:pressed { background: #414249; }
 QPushButton:disabled { color: #686971; background: #202125; border-color: #2b2c31; }
