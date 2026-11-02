@@ -33,6 +33,8 @@ def token_overlap_score(left: str, right: str) -> float:
 def is_actionable_text(text: str) -> bool:
     """Conservatively reject empty, negated and compound requests before recovery."""
     words = normalize_text(text).split()
+    if words and words[0] in {"как", "почему", "зачем", "расскажи", "объясни", "напиши"}:
+        return False
     blocked = {"не", "нет", "нельзя", "отмена", "отмени", "потом", "затем", "и", "или"}
     verbs = {
         "открой",

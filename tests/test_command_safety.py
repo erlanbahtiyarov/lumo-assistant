@@ -95,3 +95,12 @@ def test_recovery_preserves_raw_transcript_and_resolves_object(service):
     assert result.status == "confirmation_required"
     confirmed = service.confirm_command(result.artifacts["confirmation_token"])
     assert confirmed.status == "dry_run"
+
+
+@pytest.mark.parametrize("text", ["как выключить компьютер", "объясни как закрыть окно"])
+def test_instructional_questions_do_not_reach_neural_models(service, text):
+    service.recovery = Mock()
+    match, result = service.process_text_command(text)
+    assert match["intent"] is None
+    assert result.status == "no_match"
+    service.recovery.enhance_match.assert_not_called()

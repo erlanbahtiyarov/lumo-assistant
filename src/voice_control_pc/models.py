@@ -48,7 +48,7 @@ class NluSettings(BaseModel):
     neural_model_path: str = "models/command_recovery.pt"
     neural_confidence: float = 0.65
     semantic_enabled: bool = False
-    semantic_model: str = "qwen3:4b"
+    semantic_model: str = "qwen3:1.7b"
     semantic_timeout: int = Field(default=30, ge=3, le=120)
 
 

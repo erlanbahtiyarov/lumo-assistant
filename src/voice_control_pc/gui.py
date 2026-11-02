@@ -112,6 +112,7 @@ class LumoWindow(QMainWindow):
         self.pet.listen_requested.connect(self.start_voice)
         self.pet.moved.connect(self._pet_moved)
         self.pet.preferences_changed.connect(self._save_pet)
+        self.pet.quit_requested.connect(self.close)
         self.hotkey_requested.connect(self.start_voice)
         self._bind_hotkey()
         self.confirm_timer = QTimer(self)
@@ -157,6 +158,9 @@ class LumoWindow(QMainWindow):
         settings.clicked.connect(self.open_settings)
         self.settings_button = settings
         left.addWidget(settings)
+        pet_only = QPushButton("Оставить только питомца")
+        pet_only.clicked.connect(self.minimize_to_pet)
+        left.addWidget(pet_only)
         self.pet_button = QPushButton("Скрыть питомца")
         self.pet_button.clicked.connect(self.toggle_pet)
         left.addWidget(self.pet_button)
@@ -385,6 +389,12 @@ class LumoWindow(QMainWindow):
             match, result = self.last_match, value
         else:
             match, result = value
+        result = result.model_copy(deep=True)
+        if result.status == "dry_run":
+            result.message = "Команда проверена. Действие не выполнялось."
+        elif result.status == "confirmation_required":
+            result.message = "Проверь действие и подтверди, если всё верно."
+        self.last_result = result
         self.last_match = match
         text = match.get("text", "")
         self.pending_text = text
@@ -543,6 +553,7 @@ class LumoWindow(QMainWindow):
         self._save_pet()
 
     def _save_pet(self):
+        self._mode_label()
         try:
             save_preferences(self.config)
         except OSError as error:
@@ -558,6 +569,12 @@ class LumoWindow(QMainWindow):
         self.showNormal()
         self.raise_()
         self.activateWindow()
+
+    def minimize_to_pet(self):
+        self.config.settings.pet.enabled = True
+        self.pet.apply_settings()
+        self._save_pet()
+        self.hide()
 
     def closeEvent(self, event):
         if self.job is not None:

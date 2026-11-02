@@ -43,7 +43,8 @@ def test_text_command_updates_native_ui_and_history(window):
     QTest.mouseClick(window.run_button, Qt.MouseButton.LeftButton)
     wait_finished(window)
     assert "блокнот" in window.interpretation.text()
-    assert "dry-run" in window.feedback.text()
+    assert window.last_result.status == "dry_run"
+    assert "не выполнялось" in window.feedback.text()
     assert window.history.count() == 1
     assert window.pet.state == "success"
     assert window.input.isEnabled()
@@ -58,7 +59,7 @@ def test_dangerous_command_needs_explicit_ui_confirmation(window):
     QTest.mouseClick(window.yes_button, Qt.MouseButton.LeftButton)
     wait_finished(window)
     assert not window.confirm_box.isVisible()
-    assert "dry-run" in window.feedback.text()
+    assert window.last_result.status == "dry_run"
     assert window.history.count() == 2
 
 
@@ -143,3 +144,11 @@ def test_closing_during_recording_cancels_interpretation(window, monkeypatch):
     wait_finished(window)
     assert window.history.count() == 0
     assert "отменен" in window.feedback.text() or "отменена" in window.feedback.text()
+
+
+def test_pet_only_mode_can_restore_the_main_window(window):
+    window.minimize_to_pet()
+    assert not window.isVisible()
+    assert window.pet.isVisible()
+    window.reveal()
+    assert window.isVisible()

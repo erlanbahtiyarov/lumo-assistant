@@ -104,6 +104,7 @@ class DesktopPet(LumoFace):
     open_requested = Signal()
     listen_requested = Signal()
     preferences_changed = Signal()
+    quit_requested = Signal()
 
     def __init__(self, settings: PetSettings):
         super().__init__()
@@ -159,12 +160,15 @@ class DesktopPet(LumoFace):
         top.setCheckable(True)
         top.setChecked(self.settings.always_on_top)
         hide = menu.addAction("Скрыть питомца")
+        menu.addSeparator()
+        menu.addAction("Закрыть Лумо", self.quit_requested.emit)
         selected = menu.exec(event.globalPos())
         if selected == lock:
             self.settings.locked = lock.isChecked()
         elif selected == top:
             self.settings.always_on_top = top.isChecked()
         elif selected == hide:
+            self.open_requested.emit()
             self.settings.enabled = False
         else:
             return

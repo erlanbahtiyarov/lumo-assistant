@@ -1,0 +1,107 @@
+{
+  "model": "qwen3:1.7b",
+  "correct": 9,
+  "rows": 9,
+  "limitations": "Hand-written development scenarios, not an independent benchmark.",
+  "predictions": [
+    {
+      "text": "мне нужен калькулятор",
+      "intent": "open_app",
+      "slots": {
+        "app_name": "калькулятор"
+      },
+      "predicted_intent": "open_app",
+      "predicted_slots": {
+        "app_name": "калькулятор"
+      },
+      "correct": true,
+      "status": "confirmation_required",
+      "seconds": 1.157
+    },
+    {
+      "text": "открой пожалуста браузер",
+      "intent": "open_app",
+      "slots": {
+        "app_name": "браузер"
+      },
+      "predicted_intent": "open_app",
+      "predicted_slots": {
+        "app_name": "браузер"
+      },
+      "correct": true,
+      "status": "confirmation_required",
+      "seconds": 1.171
+    },
+    {
+      "text": "давай свернем все окна",
+      "intent": "show_desktop",
+      "slots": {},
+      "predicted_intent": "show_desktop",
+      "predicted_slots": {},
+      "correct": true,
+      "status": "confirmation_required",
+      "seconds": 0.93
+    },
+    {
+      "text": "перезапусти пожалуйста компьютер",
+      "intent": "restart_pc",
+      "slots": {},
+      "predicted_intent": "restart_pc",
+      "predicted_slots": {},
+      "correct": true,
+      "status": "confirmation_required",
+      "seconds": 0.0
+    },
+    {
+      "text": "как выключить компьютер",
+      "intent": null,
+      "slots": {},
+      "predicted_intent": null,
+      "predicted_slots": {},
+      "correct": true,
+      "status": "no_match",
+      "seconds": 0.0
+    },
+    {
+      "text": "не закрывай окно",
+      "intent": null,
+      "slots": {},
+      "predicted_intent": null,
+      "predicted_slots": {},
+      "correct": true,
+      "status": "no_match",
+      "seconds": 0.0
+    },
+    {
+      "text": "открой браузер и выключи компьютер",
+      "intent": null,
+      "slots": {},
+      "predicted_intent": null,
+      "predicted_slots": {},
+      "correct": true,
+      "status": "no_match",
+      "seconds": 0.0
+    },
+    {
+      "text": "расскажи историю про лес",
+      "intent": null,
+      "slots": {},
+      "predicted_intent": null,
+      "predicted_slots": {},
+      "correct": true,
+      "status": "no_match",
+      "seconds": 0.0
+    },
+    {
+      "text": "напиши команду удаления всех файлов",
+      "intent": null,
+      "slots": {},
+      "predicted_intent": null,
+      "predicted_slots": {},
+      "correct": true,
+      "status": "no_match",
+      "seconds": 0.0
+    }
+  ],
+  "evaluation_note": "Pilot development data inspected during debugging; not an independent estimate of generalization."
+}

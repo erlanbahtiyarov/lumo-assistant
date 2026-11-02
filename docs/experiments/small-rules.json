@@ -1,0 +1,130 @@
+{
+  "pipeline": "small ASR + rules",
+  "semantic_model": null,
+  "model": "small",
+  "split": "test",
+  "rows": 11,
+  "intent_accuracy": 0.5454545454545454,
+  "unknown_false_positives": 0,
+  "median_seconds_excluding_model_load": 1.2875,
+  "limitations": [
+    "Small synthesized corpus; not speaker-independent.",
+    "Measures intent recognition, not verified Windows execution or slot accuracy.",
+    "No evaluation of take_screenshot on held-out data: only one recording."
+  ],
+  "predictions": [
+    {
+      "id": "cmd_0005",
+      "transcript": "Переключись на следующее окно.",
+      "expected_intent": null,
+      "predicted_intent": null,
+      "slots": {},
+      "status": "no_match",
+      "intent_correct": true,
+      "seconds": 1.4523
+    },
+    {
+      "id": "cmd_0020",
+      "transcript": "Перезапусти компьютер.",
+      "expected_intent": "restart_pc",
+      "predicted_intent": "restart_pc",
+      "slots": {},
+      "status": "confirmation_required",
+      "intent_correct": true,
+      "seconds": 1.3592
+    },
+    {
+      "id": "cmd_0034",
+      "transcript": "Заверши работу компьютера.",
+      "expected_intent": "shutdown_pc",
+      "predicted_intent": "shutdown_pc",
+      "slots": {},
+      "status": "confirmation_required",
+      "intent_correct": true,
+      "seconds": 1.3196
+    },
+    {
+      "id": "cmd_0048",
+      "transcript": "Заблокируй ПК.",
+      "expected_intent": "lock_pc",
+      "predicted_intent": "lock_pc",
+      "slots": {},
+      "status": "dry_run",
+      "intent_correct": true,
+      "seconds": 1.1771
+    },
+    {
+      "id": "cmd_0049",
+      "transcript": "Покажи терминал.",
+      "expected_intent": "open_terminal",
+      "predicted_intent": "open_terminal",
+      "slots": {},
+      "status": "dry_run",
+      "intent_correct": true,
+      "seconds": 1.2875
+    },
+    {
+      "id": "cmd_0051",
+      "transcript": "Покажи настройки Windows.",
+      "expected_intent": "open_settings",
+      "predicted_intent": null,
+      "slots": {},
+      "status": "no_match",
+      "intent_correct": false,
+      "seconds": 1.1325
+    },
+    {
+      "id": "cmd_0058",
+      "transcript": "Открой Калькулятор.",
+      "expected_intent": "open_app",
+      "predicted_intent": "open_app",
+      "slots": {
+        "app_name": "калькулятор"
+      },
+      "status": "dry_run",
+      "intent_correct": true,
+      "seconds": 1.1438
+    },
+    {
+      "id": "cmd_0060",
+      "transcript": "Быстро покажи рабочий стол.",
+      "expected_intent": "show_desktop",
+      "predicted_intent": null,
+      "slots": {},
+      "status": "no_match",
+      "intent_correct": false,
+      "seconds": 1.2688
+    },
+    {
+      "id": "cmd_0065",
+      "transcript": "Закрой программу.",
+      "expected_intent": "close_window",
+      "predicted_intent": null,
+      "slots": {},
+      "status": "no_match",
+      "intent_correct": false,
+      "seconds": 1.1739
+    },
+    {
+      "id": "cmd_0067",
+      "transcript": "Открой загрузки К.",
+      "expected_intent": "open_folder",
+      "predicted_intent": null,
+      "slots": {},
+      "status": "no_match",
+      "intent_correct": false,
+      "seconds": 1.4493
+    },
+    {
+      "id": "cmd_0085",
+      "transcript": "Включи диспетчер сач.",
+      "expected_intent": "open_task_manager",
+      "predicted_intent": null,
+      "slots": {},
+      "status": "no_match",
+      "intent_correct": false,
+      "seconds": 1.2944
+    }
+  ],
+  "evaluation_note": "Pilot development data inspected during debugging; not an independent estimate of generalization."
+}
