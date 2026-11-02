@@ -32,9 +32,11 @@ from PySide6.QtWidgets import (
 from voice_control_pc.asr import FasterWhisperTranscriber
 from voice_control_pc.audio import list_input_devices, record_microphone_to_wav
 from voice_control_pc.config import load_config_bundle, resolved_asr_settings, save_preferences
+from voice_control_pc.diagnostics import check_readiness
 from voice_control_pc.history import HistoryStore
 from voice_control_pc.models import ResolvedConfig
 from voice_control_pc.service import VoiceControlService
+from voice_control_pc.ui.diagnostics import ReadinessDialog
 from voice_control_pc.ui.pet import DesktopPet, LumoFace
 from voice_control_pc.ui.settings import SettingsDialog
 from voice_control_pc.ui.theme import apply_theme
@@ -187,6 +189,10 @@ class LumoWindow(QMainWindow):
         eyebrow.setObjectName("eyebrow")
         head.addWidget(eyebrow)
         head.addStretch()
+        self.check_button = QPushButton("Проверить настройку")
+        self.check_button.setStyleSheet("font-size:11px; padding:6px 10px;")
+        self.check_button.clicked.connect(self.check_setup)
+        head.addWidget(self.check_button)
         self.mode = QLabel()
         self.mode.setObjectName("status")
         head.addWidget(self.mode)
@@ -328,6 +334,7 @@ class LumoWindow(QMainWindow):
         self.job.finished.connect(self._finished)
         self.run_button.setEnabled(False)
         self.settings_button.setEnabled(False)
+        self.check_button.setEnabled(False)
         self.input.setEnabled(False)
         self.yes_button.setEnabled(False)
         self.record.setEnabled(operation == "voice")
@@ -390,6 +397,10 @@ class LumoWindow(QMainWindow):
         self.record.setEnabled(self.is_recording)
 
     def _completed(self, value):
+        if self.operation == "diagnostics":
+            self.readiness_checks = value
+            QTimer.singleShot(0, self._show_readiness)
+            return
         if self.operation == "settings":
             devices, error = value
             self._devices = devices
@@ -440,6 +451,7 @@ class LumoWindow(QMainWindow):
         self.record.setEnabled(True)
         self.run_button.setEnabled(True)
         self.settings_button.setEnabled(True)
+        self.check_button.setEnabled(True)
         self.input.setEnabled(True)
         self.yes_button.setEnabled(True)
 
@@ -517,6 +529,26 @@ class LumoWindow(QMainWindow):
                 return [], str(error)
 
         self._start("settings", scan)
+
+    def check_setup(self):
+        if self.job is not None:
+            return
+        self.cancel_confirmation()
+        snapshot = self.config.model_copy(deep=True)
+        self._start(
+            "diagnostics",
+            lambda progress, stop: check_readiness(snapshot, microphone=True, ollama=True),
+        )
+
+    def _show_readiness(self):
+        if self.job is not None:
+            QTimer.singleShot(20, self._show_readiness)
+            return
+        if (
+            ReadinessDialog(self.readiness_checks, self).exec()
+            == ReadinessDialog.DialogCode.Accepted
+        ):
+            self.open_settings()
 
     def _show_settings(self):
         if self.job is not None:

@@ -55,12 +55,29 @@ def load_config_bundle(project_root: Path | None = None) -> ResolvedConfig:
     if (root / "settings.yaml").is_file():
         settings = _merge(settings, load_yaml_file(root / "settings.yaml"))
     apps = _default("apps.yaml", project_root)
-    if (root / "apps.yaml").is_file():
+    saved_apps = (root / "apps.yaml").is_file()
+    if saved_apps:
         apps = load_yaml_file(root / "apps.yaml")
+    catalog = AppsCatalog.model_validate(apps)
+    if (
+        sys.platform == "win32"
+        and not saved_apps
+        and not (project_root is not None and (project_root / "configs" / "apps.yaml").is_file())
+    ):
+        from voice_control_pc.windows import discover_defaults
+
+        catalog = discover_defaults(catalog)
+    if sys.platform == "win32":
+        from voice_control_pc.windows import find_application
+
+        for name, entry in catalog.applications.items():
+            if entry.auto_detect:
+                path = find_application(name, entry.launch[0] if entry.launch else "")
+                entry.launch = [path] if path else []
     return ResolvedConfig(
         settings=Settings.model_validate(settings),
         commands=CommandCatalog.model_validate(_default("commands.yaml", project_root)),
-        apps=AppsCatalog.model_validate(apps),
+        apps=catalog,
         project_root=root,
         user_dir=root,
     )

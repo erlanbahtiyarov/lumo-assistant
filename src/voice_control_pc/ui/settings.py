@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import sys
+
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -25,6 +28,7 @@ from PySide6.QtWidgets import (
 
 from voice_control_pc.models import AppEntry, FolderEntry, ResolvedConfig, Settings
 from voice_control_pc.ui.pet import SIDES
+from voice_control_pc.windows import find_application, known_folder
 
 
 class SettingsDialog(QDialog):
@@ -185,11 +189,40 @@ class SettingsDialog(QDialog):
         )
         label.setWordWrap(True)
         box.addWidget(label)
+        if apps:
+            self.default_browser = QCheckBox(
+                "Браузер — использовать выбранный в Windows по умолчанию"
+            )
+            browser = self.config.apps.applications.get("браузер")
+            self.default_browser.setChecked(bool(browser and browser.auto_detect))
+            self.default_browser.toggled.connect(self._browser_mode)
+            box.addWidget(self.default_browser)
         box.addWidget(table)
         buttons = QHBoxLayout()
         add = QPushButton("Добавить")
         remove = QPushButton("Удалить строку")
         browse = QPushButton("Выбрать путь…")
+        detect = QPushButton("Найти в Windows")
+        detect.setEnabled(sys.platform == "win32")
+        detect.setToolTip(
+            "Обновить путь только в выбранной строке. Изменения сохранятся после нажатия «Сохранить»."
+        )
+
+        def discover():
+            row = table.currentRow()
+            if row < 0:
+                return
+            name = table.item(row, 0).text().strip()
+            current = table.item(row, 2).text().strip()
+            path = find_application(name, current) if apps else known_folder(name)
+            if path:
+                table.item(row, 2).setText(path)
+            else:
+                QMessageBox.information(
+                    self,
+                    "Путь не найден",
+                    "Не удалось определить путь автоматически. Выбери его вручную кнопкой «Выбрать путь…».",
+                )
 
         def add_row():
             row = table.rowCount()
@@ -208,6 +241,8 @@ class SettingsDialog(QDialog):
                 else QFileDialog.getExistingDirectory(self, "Выберите папку")
             )
             if value:
+                if apps and table.item(row, 0).text().strip() == "браузер":
+                    self.default_browser.setChecked(False)
                 table.item(row, 2).setText(value)
 
         add.clicked.connect(add_row)
@@ -215,10 +250,29 @@ class SettingsDialog(QDialog):
             lambda: table.removeRow(table.currentRow()) if table.currentRow() >= 0 else None
         )
         browse.clicked.connect(choose)
-        for button in (add, remove, browse):
+        detect.clicked.connect(discover)
+        for button in (add, remove, detect, browse):
             buttons.addWidget(button)
         box.addLayout(buttons)
+        if apps:
+            self._browser_mode(self.default_browser.isChecked())
         return widget
+
+    def _browser_mode(self, automatic):
+        for row in range(self.apps.rowCount()):
+            if self.apps.item(row, 0).text().strip() == "браузер":
+                item = self.apps.item(row, 2)
+                flags = item.flags()
+                item.setFlags(
+                    flags & ~Qt.ItemFlag.ItemIsEditable
+                    if automatic
+                    else flags | Qt.ItemFlag.ItemIsEditable
+                )
+                item.setToolTip(
+                    "Браузер выбирает Windows. Сними галочку выше, чтобы указать другой путь."
+                    if automatic
+                    else ""
+                )
 
     def accept(self):
         try:
@@ -257,7 +311,8 @@ class SettingsDialog(QDialog):
                 entries = {}
                 for row in range(table.rowCount()):
                     name, aliases, path = [table.item(row, col).text().strip() for col in range(3)]
-                    if not name or not aliases or not path:
+                    automatic = apps and name == "браузер" and self.default_browser.isChecked()
+                    if not name or not aliases or (not path and not automatic):
                         raise ValueError("Заполните все поля приложений и папок")
                     if name in entries:
                         raise ValueError(f"Повторяющееся название: {name}")
@@ -266,8 +321,15 @@ class SettingsDialog(QDialog):
                         raise ValueError("Укажите хотя бы один вариант обращения")
                     old = self.config.apps.applications.get(name) if apps else None
                     arguments = old.launch[1:] if old is not None else []
+                    if automatic:
+                        path = find_application(name) or ""
+                        arguments = []
                     entries[name] = (
-                        AppEntry(aliases=alias_list, launch=[path, *arguments])
+                        AppEntry(
+                            aliases=alias_list,
+                            launch=[path, *arguments] if path else [],
+                            auto_detect=automatic,
+                        )
                         if apps
                         else FolderEntry(aliases=alias_list, path=path)
                     )

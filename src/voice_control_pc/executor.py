@@ -84,7 +84,20 @@ class SafeCommandExecutor:
                 intent=match.intent,
                 action=match.action,
             )
-        launch = self.apps.applications[app_name].launch
+        entry = self.apps.applications[app_name]
+        launch = entry.launch
+        if entry.auto_detect and not launch:
+            if self.dry_run:
+                return CommandResult(
+                    success=True,
+                    status="dry_run",
+                    message="[dry-run] Системный браузер Windows",
+                    intent=match.intent,
+                    action=match.action,
+                )
+            raise FileNotFoundError(
+                "Не удалось определить браузер. Выберите его путь в настройках приложений."
+            )
         return self._run_process(launch, f"Запущено приложение: {app_name}", match)
 
     def _handle_open_folder(self, match: IntentMatch) -> CommandResult:
@@ -97,7 +110,9 @@ class SafeCommandExecutor:
                 intent=match.intent,
                 action=match.action,
             )
-        folder_path = Path(os.path.expanduser(self.apps.folders[folder_name].path))
+        folder_path = Path(
+            os.path.expandvars(os.path.expanduser(self.apps.folders[folder_name].path))
+        )
         if self.dry_run:
             return CommandResult(
                 success=True,
@@ -202,6 +217,7 @@ class SafeCommandExecutor:
     def _run_process(self, command: list[str], message: str, match: IntentMatch) -> CommandResult:
         if not command or not command[0].strip():
             raise ValueError("Укажите путь к приложению в настройках")
+        command = [os.path.expandvars(os.path.expanduser(command[0])), *command[1:]]
         if self.dry_run:
             return CommandResult(
                 success=True,

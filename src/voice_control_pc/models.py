@@ -109,6 +109,7 @@ class CommandCatalog(BaseModel):
 class AppEntry(BaseModel):
     aliases: list[str]
     launch: list[str]
+    auto_detect: bool = False
 
 
 class FolderEntry(BaseModel):

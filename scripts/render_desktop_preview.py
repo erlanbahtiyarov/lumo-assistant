@@ -13,7 +13,9 @@ from PySide6.QtGui import QIcon, QImage, QPainter
 from PySide6.QtWidgets import QApplication, QTabWidget
 
 from voice_control_pc.config import load_config_bundle
+from voice_control_pc.diagnostics import check_readiness
 from voice_control_pc.gui import LumoWindow
+from voice_control_pc.ui.diagnostics import ReadinessDialog
 from voice_control_pc.ui.settings import SettingsDialog
 
 
@@ -38,6 +40,15 @@ def main():
         dialog.findChild(QTabWidget).setCurrentIndex(1)
         app.processEvents()
         dialog.grab().save(str(output / "lumo-pet-settings.png"))
+        dialog.findChild(QTabWidget).setCurrentIndex(3)
+        app.processEvents()
+        dialog.grab().save(str(output / "lumo-app-settings.png"))
+        dialog.close()
+        report = ReadinessDialog(check_readiness(window.config), window)
+        report.show()
+        app.processEvents()
+        report.grab().save(str(output / "lumo-readiness.png"))
+        report.close()
         from importlib.resources import files
 
         icon = QIcon(str(files("voice_control_pc.resources").joinpath("lumo.svg")))
