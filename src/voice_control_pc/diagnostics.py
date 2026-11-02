@@ -24,6 +24,7 @@ class Check:
     status: str
     detail: str
     hint: str = ""
+    diagnostic: str = ""
 
     def as_dict(self):
         return asdict(self)
@@ -179,8 +180,11 @@ def check_readiness(config: ResolvedConfig, *, microphone=False, ollama=False) -
                     "asr",
                     "Модель распознавания",
                     "warning",
-                    f"Локальная модель недоступна: {error}",
+                    str(error)
+                    if isinstance(error, ValueError) and str(error).startswith("Не хватает файлов:")
+                    else f"Файлы модели «{config.settings.asr.model_name}» не найдены в локальном хранилище.",
                     hint,
+                    diagnostic=str(error),
                 )
             )
     if microphone and audio:
@@ -206,8 +210,11 @@ def check_readiness(config: ResolvedConfig, *, microphone=False, ollama=False) -
                     "microphone",
                     "Микрофон",
                     "warning",
-                    str(error),
+                    str(error)
+                    if isinstance(error, ValueError)
+                    else "Не удалось получить список микрофонов.",
                     "Проверь подключение и разрешения Windows; затем выбери устройство в настройках.",
+                    diagnostic=str(error),
                 )
             )
     if config.settings.nlu.semantic_enabled:
@@ -232,8 +239,9 @@ def check_readiness(config: ResolvedConfig, *, microphone=False, ollama=False) -
                         "ollama",
                         "Понимание свободных команд",
                         "warning",
-                        f"Ollama недоступен: {error}",
+                        "Локальный сервис Ollama недоступен или вернул некорректный ответ.",
                         "Запусти Ollama с выбранной моделью или отключи его в настройках моделей.",
+                        diagnostic=str(error),
                     )
                 )
         else:

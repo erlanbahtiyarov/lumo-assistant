@@ -93,7 +93,8 @@ def test_unavailable_ollama_is_a_report_not_an_exception(config, monkeypatch):
     monkeypatch.setattr(diagnostics, "ollama_models", Mock(side_effect=ConnectionError("offline")))
     result = checks_by_key(config, ollama=True)["ollama"]
     assert result.status == "warning"
-    assert "offline" in result.detail
+    assert "offline" in result.diagnostic
+    assert "недоступен" in result.detail
 
 
 def test_ollama_uses_loopback_bounded_read_and_no_proxy(monkeypatch):
