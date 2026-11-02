@@ -24,6 +24,7 @@ from PySide6.QtWidgets import (
     QMessageBox,
     QPushButton,
     QScrollArea,
+    QSizePolicy,
     QVBoxLayout,
     QWidget,
 )
@@ -276,6 +277,7 @@ class LumoWindow(QMainWindow):
         history_box.addLayout(hist_head)
         self.history = QListWidget()
         self.history.setMinimumHeight(80)
+        self.history.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Ignored)
         history_box.addWidget(self.history)
         content.addWidget(history, 1)
         self.footer = QLabel("Голос обрабатывается на этом компьютере. Записи не сохраняются.")
