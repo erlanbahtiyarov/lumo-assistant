@@ -1,121 +1,133 @@
-"""CLI entrypoint."""
+"""Lumo's CLI and desktop launcher. Hardware dependencies are loaded only when needed."""
 
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import json
+import sys
 import tempfile
 from pathlib import Path
 
 from voice_control_pc.asr import FasterWhisperTranscriber
 from voice_control_pc.audio import list_input_devices, record_microphone_to_wav
-from voice_control_pc.config import load_config_bundle
+from voice_control_pc.config import load_config_bundle, resolved_asr_settings
 from voice_control_pc.logging_utils import setup_logging
 from voice_control_pc.service import VoiceControlService
 
 
+def _mode(parser):
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument("--dry-run", dest="dry_run", action="store_const", const=True, default=None)
+    group.add_argument("--execute", dest="dry_run", action="store_const", const=False)
+
+
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="lumo")
+    parser = argparse.ArgumentParser(
+        prog="lumo", description="Лумо — настольный голосовой помощник"
+    )
     parser.add_argument("--project-root", type=Path, default=None)
-
-    subparsers = parser.add_subparsers(dest="command_name", required=True)
-
-    subparsers.add_parser("devices")
-
-    transcribe_parser = subparsers.add_parser("transcribe")
-    transcribe_parser.add_argument("audio_path", type=Path)
-
-    text_command_parser = subparsers.add_parser("command")
-    text_command_parser.add_argument("text")
-    text_command_parser.add_argument("--confirm", action="store_true")
-    text_command_parser.add_argument("--dry-run", action="store_true")
-
-    gui_parser = subparsers.add_parser("gui")
-    gui_parser.add_argument("--dry-run", action="store_true")
-
-    listen_parser = subparsers.add_parser("listen")
-    listen_parser.add_argument("--dry-run", action="store_true")
-    listen_parser.add_argument("--confirm", action="store_true")
-    listen_parser.add_argument("--duration", type=int, default=None)
-    listen_parser.add_argument("--device-index", type=int, default=None)
+    parser.add_argument("--smoke-test", action="store_true", help=argparse.SUPPRESS)
+    subparsers = parser.add_subparsers(dest="command_name")
+    subparsers.add_parser("devices", help="Микрофоны")
+    subparsers.add_parser("doctor", help="Проверить окружение без загрузки моделей")
+    transcribe = subparsers.add_parser("transcribe")
+    transcribe.add_argument("audio_path", type=Path)
+    command = subparsers.add_parser("command")
+    command.add_argument("text")
+    _mode(command)
+    gui = subparsers.add_parser("gui")
+    _mode(gui)
+    listen = subparsers.add_parser("listen")
+    _mode(listen)
+    listen.add_argument("--duration", type=int, default=None)
+    listen.add_argument("--device-index", type=int, default=None)
     return parser
 
 
-def main() -> int:
-    parser = build_parser()
-    args = parser.parse_args()
+def _run(args) -> int:
+    if args.smoke_test:
+        from voice_control_pc.gui import smoke_gui
 
+        return smoke_gui()
     config = load_config_bundle(args.project_root)
-    logger = setup_logging(
-        level=config.settings.logging.level,
-        text_log_path=config.project_root / config.settings.logging.text_log_path,
-        jsonl_log_path=config.project_root / config.settings.logging.jsonl_path,
-    )
-
-    if args.command_name == "devices":
-        devices = list_input_devices()
-        print(json.dumps(devices, ensure_ascii=False, indent=2))
-        return 0
-
-    if args.command_name == "transcribe":
-        transcriber = FasterWhisperTranscriber(config.settings.asr)
-        text = transcriber.transcribe_file(args.audio_path)
-        print(text)
-        return 0
-
-    if args.command_name == "command":
-        service = VoiceControlService(config=config, dry_run=args.dry_run or config.settings.app.dry_run)
-        match, result = service.process_text_command(args.text, confirmed=args.confirm)
-        logger.info("intent=%s status=%s", match["intent"], result.status)
-        print(json.dumps({"match": match, "result": result.model_dump()}, ensure_ascii=False, indent=2))
-        return 0 if result.success else 1
-
-    if args.command_name == "gui":
+    name = args.command_name or "gui"
+    dry_run = getattr(args, "dry_run", None)
+    if name == "gui":
         from voice_control_pc.gui import run_gui
 
-        logger.info("starting gui")
-        run_gui()
+        return run_gui(config, dry_run=dry_run)
+    if name == "doctor":
+        payload = {
+            "python": sys.version.split()[0],
+            "platform": sys.platform,
+            "data_directory": str(config.project_root),
+            "execution_supported": sys.platform == "win32",
+            "asr_model": config.settings.asr.model_name,
+            "model_download_allowed": config.settings.asr.allow_download,
+            "ollama_enabled": config.settings.nlu.semantic_enabled,
+            "components": {
+                key: importlib.util.find_spec(key) is not None
+                for key in ("PySide6", "pyaudio", "faster_whisper", "torch")
+            },
+        }
+        print(json.dumps(payload, ensure_ascii=False, indent=2))
         return 0
-
-    if args.command_name == "listen":
-        transcriber = FasterWhisperTranscriber(config.settings.asr)
-        service = VoiceControlService(config=config, dry_run=args.dry_run or config.settings.app.dry_run)
-
-        (config.project_root / "artifacts").mkdir(parents=True, exist_ok=True)
-        with tempfile.NamedTemporaryFile(
-            suffix=".wav",
-            delete=False,
-            dir=str(config.project_root / "artifacts"),
-        ) as temp_audio:
-            temp_audio_path = Path(temp_audio.name)
-
-        print("Говорите команду после начала записи...")
-        logger.info("recording microphone audio into %s", temp_audio_path)
-        record_microphone_to_wav(
-            output_path=temp_audio_path,
-            settings=config.settings.audio,
-            duration_seconds=args.duration,
-            device_index=args.device_index,
-        )
-
-        text = transcriber.transcribe_file(temp_audio_path)
-        logger.info("transcribed text: %s", text)
-
-        match, result = service.process_text_command(text, confirmed=args.confirm)
+    logger = setup_logging(
+        config.settings.logging.level,
+        config.project_root / config.settings.logging.text_log_path,
+        config.project_root / config.settings.logging.jsonl_path,
+    )
+    if name == "devices":
+        print(json.dumps(list_input_devices(), ensure_ascii=False, indent=2))
+        return 0
+    if name == "transcribe":
         print(
-            json.dumps(
-                {
-                    "audio_path": str(temp_audio_path),
-                    "transcript": text,
-                    "corrected_transcript": match.get("corrected_text"),
-                    "match": match,
-                    "result": result.model_dump(),
-                },
-                ensure_ascii=False,
-                indent=2,
-            )
+            FasterWhisperTranscriber(resolved_asr_settings(config)).transcribe_file(args.audio_path)
         )
-        return 0 if result.success else 1
+        return 0
+    service = VoiceControlService(config, dry_run=dry_run)
+    if name == "command":
+        text = args.text
+    else:
+        transcriber = FasterWhisperTranscriber(resolved_asr_settings(config))
+        with tempfile.TemporaryDirectory(prefix="lumo-") as directory:
+            path = Path(directory) / "command.wav"
+            print("Говори команду…", file=sys.stderr)
+            record_microphone_to_wav(
+                output_path=path,
+                settings=config.settings.audio,
+                duration_seconds=args.duration,
+                device_index=args.device_index,
+            )
+            text = transcriber.transcribe_file(path)
+    match, result = service.process_text_command(text)
+    if result.status == "confirmation_required" and sys.stdin.isatty():
+        from voice_control_pc.models import CommandResult
 
-    parser.print_help()
-    return 1
+        action = match.get("action")
+        target = match.get("slots")
+        answer = input(f"Действие: {action}, объект: {target}. Подтвердить? Введите ДА: ")
+        if answer.strip() == "ДА":
+            result = service.confirm_command(result.artifacts["confirmation_token"])
+        else:
+            service.cancel_pending()
+            result = CommandResult(success=False, status="cancelled", message="Действие отменено")
+    logger.info("intent=%s status=%s", match["intent"], result.status)
+    print(
+        json.dumps(
+            {"transcript": text, "match": match, "result": result.model_dump()},
+            ensure_ascii=False,
+            indent=2,
+        )
+    )
+    return 0 if result.success else 1
+
+
+def main() -> int:
+    args = build_parser().parse_args()
+    try:
+        return _run(args)
+    except (Exception, KeyboardInterrupt) as error:
+        print(f"Лумо: {error or 'операция отменена'}", file=sys.stderr)
+        return 2

@@ -1,0 +1,11 @@
+[
+  {"text": "мне нужен калькулятор", "intent": "open_app", "slots": {"app_name": "калькулятор"}},
+  {"text": "открой пожалуста браузер", "intent": "open_app", "slots": {"app_name": "браузер"}},
+  {"text": "давай свернем все окна", "intent": "show_desktop", "slots": {}},
+  {"text": "перезапусти пожалуйста компьютер", "intent": "restart_pc", "slots": {}},
+  {"text": "как выключить компьютер", "intent": null, "slots": {}},
+  {"text": "не закрывай окно", "intent": null, "slots": {}},
+  {"text": "открой браузер и выключи компьютер", "intent": null, "slots": {}},
+  {"text": "расскажи историю про лес", "intent": null, "slots": {}},
+  {"text": "напиши команду удаления всех файлов", "intent": null, "slots": {}}
+]

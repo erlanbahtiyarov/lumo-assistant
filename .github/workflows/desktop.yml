@@ -1,0 +1,56 @@
+name: Desktop checks and Windows build
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: desktop-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python: ['3.12', '3.13']
+    runs-on: ${{ matrix.os }}
+    env:
+      QT_QPA_PLATFORM: offscreen
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Install headless Qt runtime
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libegl1 libopengl0 libgl1
+      - run: python -m pip install -c requirements-desktop.lock ".[dev]" build
+      - run: python -m pytest -q
+      - run: python -m ruff check src tests
+      - run: python scripts/validate_voice_command_dataset.py --expected-count 86
+      - run: python -m build --wheel
+  windows-app:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -c requirements-desktop.lock ".[voice,bundle]"
+      - run: python -m PyInstaller --noconfirm lumo.spec
+      - name: Smoke test the packaged application
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: |
+          $app = Start-Process -FilePath dist/Lumo/Lumo.exe -ArgumentList '--smoke-test' -Wait -PassThru
+          if ($app.ExitCode -ne 0) { throw "Lumo smoke test failed: $($app.ExitCode)" }
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: Lumo-Windows
+          path: dist/Lumo/
+          retention-days: 14

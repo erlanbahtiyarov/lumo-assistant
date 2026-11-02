@@ -1,0 +1,54 @@
+app:
+  locale: "ru-RU"
+  mode: "push_to_talk"
+  hotkey: "f9"
+  dry_run: true
+  single_command_mode: true
+
+audio:
+  device_index: null
+  channels: 1
+  sample_rate: 16000
+  chunk_size: 1024
+  sample_format: "int16"
+  max_seconds: 8
+  silence_timeout_ms: 700
+
+asr:
+  engine: "faster-whisper"
+  model_name: "small"
+  model_path: "models"
+  allow_download: false
+  device: "cpu"
+  compute_type: "int8"
+  beam_size: 5
+  language: "ru"
+  vad_filter: true
+  condition_on_previous_text: false
+  warmup_on_start: false
+
+nlu:
+  min_confidence: 0.7
+  fallback_to_keywords: true
+  neural_recovery_enabled: true
+  neural_model_path: "models/command_recovery.pt"
+  neural_confidence: 0.65
+
+execution:
+  require_confirmation_for:
+    - "shutdown_pc"
+    - "restart_pc"
+  confirmation_ttl_sec: 10
+  screenshot_dir: "artifacts/screenshots"
+  allow_shell: false
+
+gui:
+  theme: "system"
+  always_on_top: false
+  show_transcript: true
+  show_intent: true
+
+logging:
+  level: "INFO"
+  jsonl_path: "logs/app.jsonl"
+  text_log_path: "logs/app.log"

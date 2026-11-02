@@ -1,0 +1,89 @@
+intents:
+  - intent: "open_app"
+    action: "open_app"
+    dangerous: false
+    examples:
+      - "открой браузер"
+      - "запусти браузер"
+      - "открой блокнот"
+      - "открой калькулятор"
+      - "открой telegram"
+
+  - intent: "open_folder"
+    action: "open_folder"
+    dangerous: false
+    examples:
+      - "открой загрузки"
+      - "открой папку загрузки"
+      - "открой документы"
+      - "открой рабочий стол"
+      - "покажи папку документы"
+
+  - intent: "take_screenshot"
+    action: "take_screenshot"
+    dangerous: false
+    examples:
+      - "сделай скриншот"
+      - "сделай снимок экрана"
+      - "сделай скриншот главного экрана"
+      - "сохрани скриншот"
+
+  - intent: "close_window"
+    action: "close_window"
+    dangerous: false
+    examples:
+      - "закрой окно"
+      - "закрой текущее окно"
+      - "закрой активное окно"
+
+  - intent: "show_desktop"
+    action: "show_desktop"
+    dangerous: false
+    examples:
+      - "покажи рабочий стол"
+      - "сверни все окна"
+
+  - intent: "open_task_manager"
+    action: "open_task_manager"
+    dangerous: false
+    examples:
+      - "открой диспетчер задач"
+      - "запусти диспетчер задач"
+
+  - intent: "open_settings"
+    action: "open_settings"
+    dangerous: false
+    examples:
+      - "открой настройки"
+      - "запусти настройки"
+
+  - intent: "open_terminal"
+    action: "open_terminal"
+    dangerous: false
+    examples:
+      - "открой терминал"
+      - "запусти powershell"
+      - "открой powershell"
+
+  - intent: "lock_pc"
+    action: "lock_pc"
+    dangerous: false
+    examples:
+      - "заблокируй компьютер"
+      - "заблокируй пк"
+
+  - intent: "shutdown_pc"
+    action: "shutdown_pc"
+    dangerous: true
+    examples:
+      - "выключи компьютер"
+      - "заверши работу компьютера"
+      - "выключи пк"
+
+  - intent: "restart_pc"
+    action: "restart_pc"
+    dangerous: true
+    examples:
+      - "перезагрузи компьютер"
+      - "перезапусти компьютер"
+      - "перезагрузи пк"
