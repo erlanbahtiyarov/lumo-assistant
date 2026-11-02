@@ -22,6 +22,7 @@ class FasterWhisperTranscriber:
             device=self.settings.device,
             compute_type=self.settings.compute_type,
             download_root=self.settings.model_path,
+            local_files_only=not self.settings.allow_download,
         )
 
     def transcribe_file(self, audio_path: Path) -> str:

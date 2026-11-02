@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 from voice_control_pc.executor import SafeCommandExecutor
-from voice_control_pc.models import CommandResult, ResolvedConfig
 from voice_control_pc.ml.command_recovery import maybe_load_recovery_model
-from voice_control_pc.nlu import RuleBasedNLU
+from voice_control_pc.models import CommandResult, ResolvedConfig
+from voice_control_pc.nlu import RuleBasedNLU, is_actionable_text
 
 
 class VoiceControlService:
@@ -30,14 +30,17 @@ class VoiceControlService:
 
     def process_text_command(self, text: str, confirmed: bool = False) -> tuple[dict, CommandResult]:
         initial_match = self.nlu.match(text)
-        if self.recovery is not None:
+        if self.recovery is not None and initial_match.intent is None and is_actionable_text(text):
             recovered_match = self.recovery.enhance_match(text, initial_match)
             recovered_text = recovered_match.corrected_text or text
             match = self.nlu.match(recovered_text)
+            # A recovered class must agree with the executable command and its slots.
+            if recovered_match.intent != match.intent:
+                match = self.nlu.match("")
+            match.text = text
+            match.normalized_text = initial_match.normalized_text
             match.corrected_text = recovered_match.corrected_text
             match.correction_confidence = recovered_match.correction_confidence
-            if recovered_match.intent and match.intent is None:
-                match.intent = recovered_match.intent
         else:
             match = initial_match
         result = self.executor.execute(match, confirmed=confirmed)

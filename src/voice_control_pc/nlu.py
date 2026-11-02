@@ -5,7 +5,12 @@ from __future__ import annotations
 import re
 from collections.abc import Iterable
 
-from voice_control_pc.models import AppsCatalog, CommandCatalog, CommandSpec, IntentMatch
+from voice_control_pc.models import (
+    AppsCatalog,
+    CommandCatalog,
+    CommandSpec,
+    IntentMatch,
+)
 
 
 def normalize_text(text: str) -> str:
@@ -25,6 +30,21 @@ def token_overlap_score(left: str, right: str) -> float:
     return intersection / union
 
 
+def is_actionable_text(text: str) -> bool:
+    """Conservatively reject empty, negated and compound requests before recovery."""
+    words = normalize_text(text).split()
+    blocked = {"не", "нет", "нельзя", "отмена", "отмени", "потом", "затем", "и", "или"}
+    verbs = {
+        "открой", "запусти", "покажи", "сделай", "сохрани", "закрой", "сверни",
+        "заблокируй", "выключи", "заверши", "перезагрузи", "перезапусти",
+    }
+    return (
+        len(words) >= 2
+        and not blocked.intersection(words)
+        and sum(word in verbs for word in words) <= 1
+    )
+
+
 class RuleBasedNLU:
     def __init__(self, commands: CommandCatalog, apps: AppsCatalog, min_confidence: float = 0.7):
         self.commands = commands
@@ -33,9 +53,35 @@ class RuleBasedNLU:
 
     def match(self, text: str) -> IntentMatch:
         normalized_text = normalize_text(text)
+        rejected = IntentMatch(
+            text=text, normalized_text=normalized_text, intent=None, action=None, confidence=0.0
+        )
+        if not is_actionable_text(text):
+            return rejected
+        normalized_text = " ".join(
+            word for word in normalized_text.split() if word not in {"пожалуйста"}
+        )
         best_spec: CommandSpec | None = None
         best_example: str | None = None
         best_score = 0.0
+
+        # Recognize an opening verb independently of the allowlisted object.
+        opening = re.fullmatch(r"(?:открой|запусти|покажи) (.+)", normalized_text)
+        if opening:
+            target = opening.group(1)
+            folder_target = re.sub(r"^папк[ауи] ", "", target)
+            for intent, aliases, slot in (
+                ("open_app", self._iter_app_aliases(), "app_name"),
+                ("open_folder", self._iter_folder_aliases(), "folder_name"),
+            ):
+                names = {name for alias, name in aliases if alias in {target, folder_target}}
+                spec = next((item for item in self.commands.intents if item.intent == intent), None)
+                if len(names) == 1 and spec is not None:
+                    return IntentMatch(
+                        text=text, normalized_text=normalized_text, intent=spec.intent,
+                        action=spec.action, confidence=1.0, slots={slot: names.pop()},
+                        dangerous=spec.dangerous,
+                    )
 
         for spec in self.commands.intents:
             for example in spec.examples:
@@ -59,6 +105,9 @@ class RuleBasedNLU:
             )
 
         slots = self._extract_slots(best_spec.intent, normalized_text)
+        required_slot = {"open_app": "app_name", "open_folder": "folder_name"}.get(best_spec.intent)
+        if required_slot and required_slot not in slots:
+            return rejected
         return IntentMatch(
             text=text,
             normalized_text=normalized_text,
@@ -71,12 +120,12 @@ class RuleBasedNLU:
         )
 
     def _score(self, normalized_text: str, normalized_example: str) -> float:
+        if not normalized_text or len(normalized_text.split()) < 2:
+            return 0.0
         if normalized_text == normalized_example:
             return 1.0
-        if normalized_text.startswith(normalized_example) or normalized_example.startswith(
-            normalized_text
-        ):
-            return 0.92
+        if normalized_text.split()[0] != normalized_example.split()[0]:
+            return 0.0
         return token_overlap_score(normalized_text, normalized_example)
 
     def _extract_slots(self, intent: str, normalized_text: str) -> dict[str, str]:
@@ -110,7 +159,7 @@ class RuleBasedNLU:
         best_name: str | None = None
         best_length = -1
         for alias, canonical_name in aliases:
-            if alias in normalized_text and len(alias) > best_length:
+            if f" {alias} " in f" {normalized_text} " and len(alias) > best_length:
                 best_name = canonical_name
                 best_length = len(alias)
         return best_name

@@ -10,13 +10,12 @@ from pathlib import Path
 from voice_control_pc.asr import FasterWhisperTranscriber
 from voice_control_pc.audio import list_input_devices, record_microphone_to_wav
 from voice_control_pc.config import load_config_bundle
-from voice_control_pc.gui import run_gui
 from voice_control_pc.logging_utils import setup_logging
 from voice_control_pc.service import VoiceControlService
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="voice-pc")
+    parser = argparse.ArgumentParser(prog="lumo")
     parser.add_argument("--project-root", type=Path, default=None)
 
     subparsers = parser.add_subparsers(dest="command_name", required=True)
@@ -72,6 +71,8 @@ def main() -> int:
         return 0 if result.success else 1
 
     if args.command_name == "gui":
+        from voice_control_pc.gui import run_gui
+
         logger.info("starting gui")
         run_gui()
         return 0
@@ -80,6 +81,7 @@ def main() -> int:
         transcriber = FasterWhisperTranscriber(config.settings.asr)
         service = VoiceControlService(config=config, dry_run=args.dry_run or config.settings.app.dry_run)
 
+        (config.project_root / "artifacts").mkdir(parents=True, exist_ok=True)
         with tempfile.NamedTemporaryFile(
             suffix=".wav",
             delete=False,
