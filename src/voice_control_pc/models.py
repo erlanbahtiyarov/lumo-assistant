@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -68,11 +68,14 @@ class GuiSettings(BaseModel):
 
 class PetSettings(BaseModel):
     enabled: bool = True
-    size: int = Field(default=160, ge=96, le=280)
+    size: int = Field(default=128, ge=96, le=280)
     always_on_top: bool = True
     locked: bool = False
     x: int | None = None
     y: int | None = None
+    dock_side: Literal["top", "right", "bottom", "left"] = "top"
+    dock_offset: float = Field(default=0.5, ge=0, le=1)
+    screen_name: str = ""
 
 
 class LoggingSettings(BaseModel):
